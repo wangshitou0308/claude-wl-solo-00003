@@ -151,6 +151,12 @@ def solve_group(
         return GroupOutcome(
             group.appearance, True, True, None, {}, min_total, max_total
         )
+    if count == 0:
+        # 总数落在 [min_total, max_total] 区间内，但无法按每次粒数整组
+        # 闭合到各药格（如每次 2 粒却找到 3 粒）——同样属于数量不闭合。
+        return GroupOutcome(
+            group.appearance, False, False, None, {}, min_total, max_total
+        )
     return GroupOutcome(
         group.appearance,
         True,

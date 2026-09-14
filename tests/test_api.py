@@ -206,6 +206,38 @@ def test_duplicate_med_id_rejected(client):
     assert resp.json()["detail"]["errors"][0]["code"] == "duplicate_med_id"
 
 
+def test_in_range_but_not_allocatable_rejected_not_500(client):
+    """找到的药片数落在计划最小/最大值之间，但无法按每次剂量整组分配：
+    必须整案拒绝（422 + 字段定位），而不是服务器错误。"""
+    payload = {
+        "title": "整组分配失败案例",
+        "start_date": "2026-09-14",
+        "medications": [
+            {"med_id": "C", "imprint": "C1", "color": "蓝色", "shape": "胶囊",
+             "dose_per_slot": 2,
+             "cells": [{"day": 1, "slot": "morning"},
+                       {"day": 2, "slot": "morning"}],
+             "allowed_empty_cells": [{"day": 2, "slot": "morning"}]},
+        ],
+    }
+    resp = client.post("/cases", json=payload)
+    assert resp.status_code == 201, resp.text
+    case_id = resp.json()["case_id"]
+    # 计划总量 2~4 粒，实际找到 3 粒：落区间内但无法按每次 2 粒整组闭合
+    obs = {"residual": [],
+           "scattered": [{"imprint": "C1", "color": "蓝色", "shape": "胶囊",
+                          "count": 3}]}
+    assert put_observation(client, case_id, obs).status_code == 200
+    resp = client.post(f"/cases/{case_id}/solve")
+    assert resp.status_code == 422, resp.text
+    errors = resp.json()["detail"]["errors"]
+    assert errors[0]["code"] == "quantity_mismatch"
+    assert errors[0]["loc"] == ["observation"]
+    assert "整组分配" in errors[0]["message"]
+    detail = client.get(f"/cases/{case_id}").json()
+    assert detail["status"] == "rejected"
+
+
 def test_solve_without_observation_conflict(client):
     case_id = create_case(client)
     resp = client.post(f"/cases/{case_id}/solve")

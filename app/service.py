@@ -570,8 +570,9 @@ def solve_case(conn: sqlite3.Connection, case_id: str) -> dict:
                 why = (f"实际残留+散落共 {observed} 粒，不足以填满必填药格所需的"
                        f" {outcome.min_total} 粒")
             else:
-                why = (f"实际残留+散落共 {observed} 粒，"
-                       "无法在满足各格剂量与停服约束下完成闭合分配")
+                why = (f"实际残留+散落共 {observed} 粒，落在计划总量"
+                       f" {outcome.min_total}~{outcome.max_total} 粒区间内，"
+                       "但无法按每次粒数整组分配到各药格，闭合方案不存在")
             errors.append(err(
                 "quantity_mismatch", ["observation"],
                 f"外观（{label}）涉及药品 {sorted(group.med_ids)}：{why}，数量不闭合",

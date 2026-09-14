@@ -94,6 +94,21 @@ def test_identical_appearance_two_meds_still_determined():
     assert out.x_values[cell_index(2, "morning")] == [2]
 
 
+def test_in_range_but_not_allocatable_in_whole_doses():
+    """总数在 [min, max] 区间内但无法按每次粒数整组闭合 -> 不可行（回归：曾误判可行导致 500）。"""
+    g = group(
+        demands={
+            cell_index(1, "morning"): CellDemand(required=2),
+            cell_index(2, "morning"): CellDemand(optional=[2]),
+        },
+        scattered=3,
+        has_optional=True,
+    )
+    out = solve_group(g)
+    assert not out.feasible
+    assert out.min_total == 2 and out.max_total == 4
+
+
 def test_truncation_protection():
     demands = {cell_index(d, "morning"): CellDemand(optional=[1])
                for d in range(1, 8)}
