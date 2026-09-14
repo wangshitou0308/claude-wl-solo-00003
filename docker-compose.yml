@@ -1,0 +1,25 @@
+# 本机一键启动：docker compose up --build
+# 纯后端服务，不访问任何在线识别或医疗服务；数据仅落在本机 SQLite 卷中。
+services:
+  api:
+    build: .
+    image: pillbox-api
+    ports:
+      - "8000:8000"
+    environment:
+      PILLBOX_DB_PATH: /data/pillbox.db
+      # 求解枚举上限（超出则保守地全部隔离），一般无需调整
+      PILLBOX_MAX_SOLUTIONS: "20000"
+      PILLBOX_MAX_NODES: "2000000"
+    volumes:
+      - pillbox-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request;urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  pillbox-data:
